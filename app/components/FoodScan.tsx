@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import config from '../../config';
+import { HealthData } from '../types/health';
 
 interface Ingredient {
   name: string;
@@ -15,7 +17,7 @@ interface Impact {
 
 interface AnalyzedIngredient {
   name: string;
-  classification: 'very good' | 'good' | 'bad' | 'very bad';
+  classification: 'very_good' | 'good' | 'bad' | 'very_bad';
   impacts: Impact[];
   warnings: string[];
   recommendations: string[];
@@ -37,7 +39,7 @@ interface ScanResponse {
 
 interface FoodScanProps {
   onClose: () => void;
-  healthData: any; // Replace with your health data type
+  healthData: HealthData;
 }
 
 export default function FoodScan({ onClose, healthData }: FoodScanProps) {
@@ -60,7 +62,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [stream]);
 
   const startCamera = async () => {
     try {
@@ -179,7 +181,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
     }
   };
 
-  const handleAnalysisResponse = (data: any) => {
+  const handleAnalysisResponse = (data: { raw_analysis?: string; ingredients?: AnalyzedIngredient[] }) => {
     try {
       // If we have raw_analysis, try to parse and clean it
       if (data.raw_analysis) {
@@ -190,11 +192,11 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
         
         try {
           // Try parsing the cleaned JSON
-          const parsedAnalysis = JSON.parse(cleanedJson);
+          const parsedAnalysis: { ingredients: AnalyzedIngredient[] } = JSON.parse(cleanedJson);
           setHealthAnalysis({
             ingredients: parsedAnalysis.ingredients || [],
             summary: {
-              safe_to_consume: !parsedAnalysis.ingredients.some((i: any) => 
+              safe_to_consume: !parsedAnalysis.ingredients.some((i: AnalyzedIngredient) => 
                 i.classification === 'very_bad' || i.warnings.length > 0
               ),
               overall_impact: determineOverallImpact(parsedAnalysis.ingredients)
@@ -209,11 +211,11 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
           if (partialMatch) {
             try {
               const ingredientsJson = `[${partialMatch[1]}]`;
-              const partialIngredients = JSON.parse(ingredientsJson);
+              const partialIngredients: AnalyzedIngredient[] = JSON.parse(ingredientsJson);
               setHealthAnalysis({
                 ingredients: partialIngredients,
                 summary: {
-                  safe_to_consume: !partialIngredients.some((i: any) => 
+                  safe_to_consume: !partialIngredients.some((i: AnalyzedIngredient) => 
                     i.classification === 'very_bad' || i.warnings.length > 0
                   ),
                   overall_impact: determineOverallImpact(partialIngredients)
@@ -232,7 +234,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
         setHealthAnalysis({
           ingredients: data.ingredients,
           summary: {
-            safe_to_consume: !data.ingredients.some((i: any) => 
+            safe_to_consume: !data.ingredients.some((i: AnalyzedIngredient) => 
               i.classification === 'very_bad' || i.warnings.length > 0
             ),
             overall_impact: determineOverallImpact(data.ingredients)
@@ -249,8 +251,8 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
     }
   };
 
-  const determineOverallImpact = (ingredients: any[]) => {
-    const stats = ingredients.reduce((acc: any, ingredient: any) => {
+  const determineOverallImpact = (ingredients: AnalyzedIngredient[]) => {
+    const stats = ingredients.reduce((acc: Record<string, number>, ingredient: AnalyzedIngredient) => {
       acc[ingredient.classification] = (acc[ingredient.classification] || 0) + 1;
       return acc;
     }, {});
@@ -270,10 +272,10 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
 
   const getClassificationColor = (classification: AnalyzedIngredient['classification']) => {
     switch (classification) {
-      case 'very good': return 'bg-green-50 text-green-700 border-green-200';
+      case 'very_good': return 'bg-green-50 text-green-700 border-green-200';
       case 'good': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'bad': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'very bad': return 'bg-red-50 text-red-700 border-red-200';
+      case 'very_bad': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
@@ -330,7 +332,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
   };
 
   const getIngredientStats = (ingredients: AnalyzedIngredient[]) => {
-    return ingredients.reduce((acc, ingredient) => {
+    return ingredients.reduce((acc: Record<AnalyzedIngredient['classification'], number>, ingredient: AnalyzedIngredient) => {
       acc[ingredient.classification] = (acc[ingredient.classification] || 0) + 1;
       return acc;
     }, {} as Record<AnalyzedIngredient['classification'], number>);
@@ -368,11 +370,15 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
               />
             )}
             {capturedImage && (
-              <img 
-                src={capturedImage} 
-                alt="Captured food" 
-                className="w-full h-full object-cover"
-              />
+              <div className="relative w-full h-64">
+                <Image
+                  src={capturedImage}
+                  alt="Captured food"
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  className="rounded-lg"
+                />
+              </div>
             )}
             
             {/* Camera Controls */}
@@ -668,7 +674,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium ${getClassificationColor(ingredient.classification)}`}>
-                            {ingredient.classification}
+                            {ingredient.classification.replace('_', ' ')}
                           </span>
                         </td>
                         <td className="px-6 py-4">

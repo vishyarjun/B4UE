@@ -1,19 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import config from '../../config';
-
-interface HealthMetric {
-  referenceInterval: string | null;
-  result: number | null;
-  units: string | null;
-}
-
-interface HealthData {
-  dietaryRequirement: string;
-  allergies: string[];
-  healthConditions: string[];
-  healthReports: File[];
-  additionalHealthData: { [key: string]: HealthMetric };
-}
+import { HealthData, HealthMetric } from '../types/health';
 
 interface HealthDataFormProps {
   onClose: () => void;
@@ -116,17 +103,15 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
     }));
   };
 
-  const handleAddHealthData = () => {
-    if (newKey.trim() && newValue.trim()) {
+  const handleAddHealthData = (key: string, value: string) => {
+    if (key.trim() && value.trim()) {
       setHealthData(prev => ({
         ...prev,
         additionalHealthData: {
           ...prev.additionalHealthData,
-          [newKey.trim()]: { result: parseFloat(newValue.trim()), referenceInterval: null, units: null }
+          [key.trim()]: { result: parseFloat(value.trim()), referenceInterval: null, units: null }
         }
       }));
-      setNewKey('');
-      setNewValue('');
     }
   };
 
@@ -160,7 +145,7 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
       // Validate the response format
       if (typeof data === 'object' && data !== null) {
         // Validate each metric in the response
-        const isValidMetric = (metric: any): metric is HealthMetric => {
+        const isValidMetric = (metric: unknown): metric is HealthMetric => {
           return metric !== null &&
                  typeof metric === 'object' &&
                  'referenceInterval' in metric &&
@@ -435,6 +420,33 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Manual Health Data Entry */}
+          <div className="mt-4">
+            <div className="flex gap-4 mb-2">
+              <input
+                type="text"
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                placeholder="Metric name"
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+              <input
+                type="number"
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                placeholder="Value"
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => handleAddHealthData(newKey, newValue)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium shadow-sm hover:shadow"
+              >
+                Add Metric
+              </button>
             </div>
           </div>
 

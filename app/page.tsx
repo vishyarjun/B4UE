@@ -5,11 +5,12 @@ import HealthDataForm from "./components/HealthDataForm";
 import FoodScan from "./components/FoodScan";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeartPulse, faUtensils, faShieldHeart } from '@fortawesome/free-solid-svg-icons';
+import { HealthData } from './types/health';
 
 export default function Home() {
   const [showHealthForm, setShowHealthForm] = useState(false);
   const [showFoodScan, setShowFoodScan] = useState(false);
-  const [healthData, setHealthData] = useState(() => {
+  const [healthData, setHealthData] = useState<HealthData | null>(() => {
     if (typeof window !== 'undefined') {
       const savedData = localStorage.getItem('healthData');
       return savedData ? JSON.parse(savedData) : null;
@@ -17,7 +18,7 @@ export default function Home() {
     return null;
   });
 
-  const handleHealthDataUpdate = (data: any) => {
+  const handleHealthDataUpdate = (data: HealthData) => {
     setHealthData(data);
     if (typeof window !== 'undefined') {
       localStorage.setItem('healthData', JSON.stringify(data));
