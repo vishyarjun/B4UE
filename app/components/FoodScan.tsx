@@ -53,34 +53,93 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
   const [editingIngredient, setEditingIngredient] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isCameraSupported, setIsCameraSupported] = useState(true);
 
   useEffect(() => {
-    startCamera();
+    checkCameraSupport();
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
     };
-  }, [stream]);
+  }, []);
+
+  const checkCameraSupport = async () => {
+    try {
+      // Check if mediaDevices is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setIsCameraSupported(false);
+        setError('Your device or browser does not support camera access.');
+        return;
+      }
+
+      // Check if we have permission to access the camera
+      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
+      if (result.state === 'denied') {
+        setIsCameraSupported(false);
+        setError('Camera access is denied. Please enable camera access in your browser settings.');
+        return;
+      }
+
+      startCamera();
+    } catch (error) {
+      console.error('Error checking camera support:', error);
+      setIsCameraSupported(false);
+      setError('Failed to access camera. Please make sure you have a camera and have granted camera permissions.');
+    }
+  };
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+      // Try environment camera first (back camera on phones)
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        });
+        await initializeStream(mediaStream);
+      } catch (error) {
+        // If environment camera fails, try any available camera
+        console.log('Failed to access back camera, trying any camera:', error);
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+        await initializeStream(mediaStream);
       }
-      setError(null);
     } catch (error) {
       console.error('Error accessing camera:', error);
       setError('Failed to access camera. Please make sure you have granted camera permissions.');
+      setIsCameraSupported(false);
     }
+  };
+
+  const initializeStream = async (mediaStream: MediaStream) => {
+    setStream(mediaStream);
+    if (videoRef.current) {
+      videoRef.current.srcObject = mediaStream;
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        if (videoRef.current) {
+          videoRef.current.onloadedmetadata = resolve;
+        }
+      });
+      setError(null);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+  };
+
+  const retakePhoto = () => {
+    setCapturedImage(null);
+    setShowConfirmation(false);
+    setError(null);
+    startCamera();
   };
 
   const capturePhoto = () => {
@@ -99,13 +158,6 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
         setStream(null);
       }
     }
-  };
-
-  const retakePhoto = () => {
-    setCapturedImage(null);
-    setShowConfirmation(false);
-    setError(null);
-    startCamera();
   };
 
   const analyzeFoodImage = async () => {
@@ -344,102 +396,95 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              Food Scanner
-            </h2>
-            <p className="text-gray-600 mt-2">Identify ingredients in your food</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors p-2 hover:bg-gray-100 rounded-full"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          {/* Camera/Image Preview */}
-          <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
-            {!capturedImage && (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-            )}
-            {capturedImage && (
-              <div className="relative w-full h-64">
-                <Image
-                  src={capturedImage}
-                  alt="Captured food"
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  className="rounded-lg"
-                />
-              </div>
-            )}
-            
-            {/* Camera Controls */}
-            {!showConfirmation && !capturedImage && !error && (
-              <button
-                onClick={capturePhoto}
-                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-white text-gray-900 rounded-xl hover:bg-gray-100 transition-colors font-medium shadow-lg flex items-center gap-2"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4H19a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Capture Photo
-              </button>
-            )}
-
-            {/* Confirmation Controls */}
-            {showConfirmation && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4">
-                <button
-                  onClick={retakePhoto}
-                  className="px-6 py-3 bg-white text-gray-900 rounded-xl hover:bg-gray-100 transition-colors font-medium shadow-lg flex items-center gap-2"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Retake
-                </button>
-                <button
-                  onClick={analyzeFoodImage}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-lg flex items-center gap-2"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  Analyze Photo
-                </button>
-              </div>
-            )}
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">Scan Food</h2>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-              <svg className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-red-800 font-medium">{error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-red-800">Error</h3>
+                  <p className="mt-1 text-sm text-red-700">{error}</p>
+                  {!isCameraSupported && (
+                    <div className="mt-3">
+                      <p className="text-sm text-red-700 font-medium">Troubleshooting steps:</p>
+                      <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                        <li>Make sure your device has a camera</li>
+                        <li>Check if camera permissions are enabled in your browser settings</li>
+                        <li>Try using a different browser (Chrome or Firefox recommended)</li>
+                        <li>If on mobile, try using the back camera</li>
+                      </ul>
+                      <button
+                        onClick={checkCameraSupport}
+                        className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Camera Preview */}
+          {!showConfirmation && !showResults && !capturedImage && (
+            <div className="relative aspect-video bg-gray-900 rounded-xl overflow-hidden">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
                 <button
-                  onClick={retakePhoto}
-                  className="mt-2 text-red-600 hover:text-red-700 font-medium"
+                  onClick={capturePhoto}
+                  disabled={!stream || isAnalyzing}
+                  className={`mx-auto flex items-center justify-center w-16 h-16 rounded-full border-4 border-white ${
+                    stream && !isAnalyzing ? 'bg-white hover:bg-gray-100' : 'bg-gray-400 cursor-not-allowed'
+                  }`}
                 >
-                  Try Again
+                  <svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Confirmation Controls */}
+          {showConfirmation && (
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={retakePhoto}
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+              >
+                Retake
+              </button>
+              <button
+                onClick={analyzeFoodImage}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+              >
+                Analyze Photo
+              </button>
             </div>
           )}
 
