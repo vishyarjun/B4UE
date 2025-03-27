@@ -44,12 +44,12 @@ export default function Home() {
                           hover:shadow-xl transition-all duration-300 hover:scale-105">
               <div className="relative w-full h-full">
                 <Image
-                  src="/b4ue logo.png"
+                  src="/logo.svg"
                   alt="B4UE Logo"
                   fill
+                  priority
                   style={{ objectFit: 'contain' }}
                   className="rounded-lg"
-                  priority
                 />
               </div>
             </div>

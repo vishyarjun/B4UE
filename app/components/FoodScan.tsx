@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import config from '../../config';
+import config, { getAuthHeader } from '../../config';
 import { HealthData } from '../types/health';
 
 interface Ingredient {
@@ -124,10 +124,16 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
 
       const apiResponse = await fetch(`${config.api.baseUrl}${config.api.endpoints.foodScan}`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          ...getAuthHeader()
+        }
       });
 
       if (!apiResponse.ok) {
+        if (apiResponse.status === 401) {
+          throw new Error('Unauthorized: Invalid or missing authentication token');
+        }
         throw new Error('Failed to analyze food image');
       }
 
@@ -142,7 +148,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
       }
     } catch (error) {
       console.error('Error analyzing food:', error);
-      setError('Failed to analyze food image. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to analyze food image. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -159,6 +165,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeader()
         },
         body: JSON.stringify({
           health_data: healthData,
@@ -167,6 +174,9 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Invalid or missing authentication token');
+        }
         throw new Error('Failed to analyze ingredients');
       }
 
@@ -175,7 +185,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
       handleAnalysisResponse(data);
     } catch (error) {
       console.error('Error analyzing ingredients:', error);
-      setError('Failed to analyze ingredients. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to analyze ingredients. Please try again.');
     } finally {
       setIsAnalyzingHealth(false);
     }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import config from '../../config';
+import config, { getAuthHeader } from '../../config';
 import { HealthData, HealthMetric } from '../types/health';
 
 interface HealthDataFormProps {
@@ -133,10 +133,16 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
     try {
       const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.imageScan}`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          ...getAuthHeader()
+        }
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Invalid or missing authentication token');
+        }
         throw new Error('Failed to analyze image');
       }
 
@@ -182,7 +188,7 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
       }
     } catch (error) {
       console.error('Error analyzing image:', error);
-      alert('Failed to analyze image. Please try again.');
+      alert(error instanceof Error ? error.message : 'Failed to analyze image. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -473,8 +479,7 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
                   className="px-6 py-4 bg-gray-50/80 text-gray-700 rounded-xl hover:bg-gray-100/80 transition-colors flex items-center gap-2 font-medium shadow-sm hover:shadow"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4H7.86a2 2 0 00-1.664.89L3 9a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5a2 2 0 00-1.664-1.11l-.812-1.22A2 2 0 0016.07 7H24v2a2 2 0 01-2 2H7" />
                   </svg>
                   Take Photo
                 </button>
