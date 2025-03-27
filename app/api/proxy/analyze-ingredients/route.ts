@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 300; // Set max duration to 5 minutes
+export const maxDuration = 60; // Set max duration to 60 seconds (hobby plan limit)
 export const dynamic = 'force-dynamic'; // Disable static optimization
 
 export async function POST(request: Request) {
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const data = await request.json();
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55 second timeout (slightly less than maxDuration)
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analyze-ingredients`, {
       method: 'POST',
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     console.error('Error in analyze-ingredients proxy:', error);
     if (error instanceof Error && error.name === 'AbortError') {
       return NextResponse.json(
-        { error: 'Request timed out. The ingredient analysis is taking longer than expected.' },
+        { error: 'Request timed out. The ingredient analysis is taking longer than expected. Please try with fewer ingredients or contact support for assistance.' },
         { status: 504 }
       );
     }
