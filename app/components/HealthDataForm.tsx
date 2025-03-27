@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import config, { getAuthHeader } from '../../config';
 import { HealthData, HealthMetric } from '../types/health';
 
 interface HealthDataFormProps {

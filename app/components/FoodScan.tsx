@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import config, { getAuthHeader } from '../../config';
 import { HealthData } from '../types/health';
 
 interface Ingredient {
@@ -158,11 +157,10 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
     setError(null);
 
     try {
-      const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.analyzeIngredients}`, {
+      const response = await fetch('/api/proxy/analyze-ingredients', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader()
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           health_data: healthData,
@@ -395,7 +393,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
                 className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-white text-gray-900 rounded-xl hover:bg-gray-100 transition-colors font-medium shadow-lg flex items-center gap-2"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4H19a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 Capture Photo
