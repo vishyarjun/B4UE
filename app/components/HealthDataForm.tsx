@@ -131,18 +131,12 @@ export default function HealthDataForm({ onClose, onSave, initialData }: HealthD
     setIsAnalyzing(true);
 
     try {
-      const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.imageScan}`, {
+      const response = await fetch('/api/proxy/image-scan', {
         method: 'POST',
-        body: formData,
-        headers: {
-          ...getAuthHeader()
-        }
+        body: formData
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Unauthorized: Invalid or missing authentication token');
-        }
         throw new Error('Failed to analyze image');
       }
 

@@ -122,12 +122,9 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
       const formData = new FormData();
       formData.append('image', blob, 'food-image.jpg');
 
-      const apiResponse = await fetch(`${config.api.baseUrl}${config.api.endpoints.foodScan}`, {
+      const apiResponse = await fetch('/api/proxy/food-scan', {
         method: 'POST',
-        body: formData,
-        headers: {
-          ...getAuthHeader()
-        }
+        body: formData
       });
 
       if (!apiResponse.ok) {
