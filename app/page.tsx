@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import Image from "next/image";
 import HealthDataForm from "./components/HealthDataForm";
 import FoodScan from "./components/FoodScan";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -36,11 +37,26 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
       <main className="container mx-auto px-4">
-        <div className="text-center mb-20">
-          <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-4">
-            B4UE
-          </h1>
-          <p className="text-2xl text-gray-600 font-medium">Mindful Eating</p>
+        <div className="text-center mb-16">
+          <div className="flex justify-center mb-8">
+            <div className="relative w-72 h-72 p-8 bg-white/40 backdrop-blur-sm rounded-2xl shadow-lg 
+                          before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/10 before:to-indigo-500/10 before:rounded-2xl
+                          hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div className="relative w-full h-full">
+                <Image
+                  src="/b4ue logo.png"
+                  alt="B4UE Logo"
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  className="rounded-lg"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-xl text-gray-600 font-medium max-w-2xl mx-auto leading-relaxed">
+            Your AI-powered food detective—uncover hidden ingredients and make smarter, healthier choices.
+          </p>
         </div>
         
         <div className="flex flex-col md:flex-row gap-16 justify-center items-center max-w-6xl mx-auto mb-16">

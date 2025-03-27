@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007AFF"/>
+      <stop offset="100%" style="stop-color:#5856D6"/>
+    </linearGradient>
+    <!-- SF Pro Display font simulation -->
+    <style type="text/css">
+      @font-face {
+        font-family: 'SF Pro Display';
+        src: local('-apple-system'), local('BlinkMacSystemFont');
+      }
+    </style>
+  </defs>
+
+  <!-- Sleek rounded rectangle background -->
+  <rect x="20" y="20" width="160" height="160" rx="40" fill="url(#gradient)"/>
+
+  <!-- B4UE Text with Apple-style typography -->
+  <text x="100" y="115" 
+        font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Arial" 
+        font-size="48" 
+        font-weight="600" 
+        fill="white" 
+        text-anchor="middle" 
+        letter-spacing="1">
+    B4UE
+  </text>
+</svg>
