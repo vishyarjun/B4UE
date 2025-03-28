@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { HealthData, HealthMetric } from '../types/health';
+import { HealthData } from '../types/health';
 
 interface Ingredient {
   name: string;
@@ -103,8 +103,11 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
       }
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []); // Empty dependency array since we only want this to run once on mount
+  }, [stream]); // Add stream to dependencies
 
   const retakePhoto = () => {
     setCapturedImage(null);
