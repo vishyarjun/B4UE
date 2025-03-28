@@ -54,6 +54,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCameraSupported, setIsCameraSupported] = useState(true);
+  const mountedRef = useRef(false);
 
   const stopCamera = useCallback(() => {
     if (stream) {
@@ -62,7 +63,78 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
     }
   }, [stream]);
 
+  const startCamera = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
+    try {
+      // Try environment camera first (back camera on phones)
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        });
+        if (!mountedRef.current) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        await initializeStream(mediaStream);
+      } catch (error) {
+        if (!mountedRef.current) return;
+        
+        // If environment camera fails, try any available camera
+        console.log('Failed to access back camera, trying any camera:', error);
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+        if (!mountedRef.current) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        await initializeStream(mediaStream);
+      }
+    } catch (error) {
+      if (!mountedRef.current) return;
+      
+      console.error('Error accessing camera:', error);
+      setError('Failed to access camera. Please make sure you have granted camera permissions.');
+      setIsCameraSupported(false);
+    }
+  }, []);
+
+  const initializeStream = useCallback(async (mediaStream: MediaStream) => {
+    if (!mountedRef.current) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      return;
+    }
+
+    setStream(mediaStream);
+    if (videoRef.current) {
+      videoRef.current.srcObject = mediaStream;
+      // Wait for video to be ready
+      try {
+        await new Promise((resolve) => {
+          if (!videoRef.current) return;
+          videoRef.current.onloadedmetadata = resolve;
+        });
+        if (!mountedRef.current) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        setError(null);
+      } catch (error) {
+        if (!mountedRef.current) return;
+        console.error('Error initializing video stream:', error);
+        setError('Failed to initialize camera stream.');
+      }
+    }
+  }, []);
+
   const checkCameraSupport = useCallback(async () => {
+    if (!mountedRef.current) return;
+
     try {
       // Check if mediaDevices is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -79,61 +151,23 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
         return;
       }
 
-      startCamera();
+      await startCamera();
     } catch (error) {
+      if (!mountedRef.current) return;
       console.error('Error checking camera support:', error);
       setIsCameraSupported(false);
       setError('Failed to access camera. Please make sure you have a camera and have granted camera permissions.');
     }
-  }, []);
+  }, [startCamera]);
 
   useEffect(() => {
+    mountedRef.current = true;
     checkCameraSupport();
     return () => {
+      mountedRef.current = false;
       stopCamera();
     };
   }, [checkCameraSupport, stopCamera]);
-
-  const startCamera = async () => {
-    try {
-      // Try environment camera first (back camera on phones)
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          }
-        });
-        await initializeStream(mediaStream);
-      } catch (error) {
-        // If environment camera fails, try any available camera
-        console.log('Failed to access back camera, trying any camera:', error);
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true
-        });
-        await initializeStream(mediaStream);
-      }
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setError('Failed to access camera. Please make sure you have granted camera permissions.');
-      setIsCameraSupported(false);
-    }
-  };
-
-  const initializeStream = async (mediaStream: MediaStream) => {
-    setStream(mediaStream);
-    if (videoRef.current) {
-      videoRef.current.srcObject = mediaStream;
-      // Wait for video to be ready
-      await new Promise((resolve) => {
-        if (videoRef.current) {
-          videoRef.current.onloadedmetadata = resolve;
-        }
-      });
-      setError(null);
-    }
-  };
 
   const retakePhoto = () => {
     setCapturedImage(null);
