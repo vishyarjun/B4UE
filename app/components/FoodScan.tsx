@@ -19,7 +19,7 @@ interface AnalyzedIngredient {
   classification: 'very_good' | 'good' | 'neutral' | 'bad' | 'very_bad';
   impacts: Impact[];
   warnings: string[];
-  recommendations: string[];
+  recommendations?: string[];  
 }
 
 interface HealthAnalysis {
@@ -232,70 +232,30 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
     }
   };
 
-  const handleAnalysisResponse = (data: { raw_analysis?: string; ingredients?: AnalyzedIngredient[] }) => {
+  const handleAnalysisResponse = (data: { ingredients: AnalyzedIngredient[]; summary?: { safe_to_consume: boolean; overall_impact: string } }) => {
     try {
-      // If we have raw_analysis, try to parse and clean it
-      if (data.raw_analysis) {
-        const cleanedJson = data.raw_analysis
-          .replace(/\n/g, '')  // Remove newlines
-          .replace(/\r/g, '')  // Remove carriage returns
-          .replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Remove control characters
-        
-        try {
-          // Try parsing the cleaned JSON
-          const parsedAnalysis: { ingredients: AnalyzedIngredient[] } = JSON.parse(cleanedJson);
-          setHealthAnalysis({
-            ingredients: parsedAnalysis.ingredients || [],
-            summary: {
-              safe_to_consume: !parsedAnalysis.ingredients.some((i: AnalyzedIngredient) => 
-                i.classification === 'very_bad' || i.warnings.length > 0
-              ),
-              overall_impact: determineOverallImpact(parsedAnalysis.ingredients)
-            }
-          });
-          return;
-        } catch (innerError) {
-          console.error('Failed to parse cleaned raw analysis:', innerError);
-          
-          // If the JSON is incomplete, try to extract what we can
-          const partialMatch = cleanedJson.match(/"ingredients":\s*\[([\s\S]*?)\]/);
-          if (partialMatch) {
-            try {
-              const ingredientsJson = `[${partialMatch[1]}]`;
-              const partialIngredients: AnalyzedIngredient[] = JSON.parse(ingredientsJson);
-              setHealthAnalysis({
-                ingredients: partialIngredients,
-                summary: {
-                  safe_to_consume: !partialIngredients.some((i: AnalyzedIngredient) => 
-                    i.classification === 'very_bad' || i.warnings.length > 0
-                  ),
-                  overall_impact: determineOverallImpact(partialIngredients)
-                }
-              });
-              return;
-            } catch (matchError) {
-              console.error('Failed to parse partial ingredients:', matchError);
-            }
-          }
+      if (!data.ingredients) {
+        throw new Error('No ingredients data found in response');
+      }
+
+      // Ensure all required fields are present and handle optional fields
+      const ingredients = data.ingredients.map(ingredient => ({
+        name: ingredient.name,
+        classification: ingredient.classification,
+        impacts: ingredient.impacts || [],
+        warnings: ingredient.warnings || [],
+        recommendations: ingredient.recommendations || []
+      }));
+
+      setHealthAnalysis({
+        ingredients,
+        summary: data.summary || {
+          safe_to_consume: !ingredients.some(i => 
+            i.classification === 'very_bad' || (i.warnings && i.warnings.length > 0)
+          ),
+          overall_impact: determineOverallImpact(ingredients)
         }
-      }
-      
-      // If we get here, try to parse the data directly
-      if (data.ingredients) {
-        setHealthAnalysis({
-          ingredients: data.ingredients,
-          summary: {
-            safe_to_consume: !data.ingredients.some((i: AnalyzedIngredient) => 
-              i.classification === 'very_bad' || i.warnings.length > 0
-            ),
-            overall_impact: determineOverallImpact(data.ingredients)
-          }
-        });
-        return;
-      }
-      
-      // If all parsing attempts fail, throw an error
-      throw new Error('Unable to parse ingredients data');
+      });
     } catch (error) {
       console.error('Error processing analysis response:', error);
       setError('Failed to process ingredient analysis. Please try again.');
@@ -738,53 +698,34 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Classification</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Health Impacts</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Warnings</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Recommendations</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {healthAnalysis.ingredients.map((ingredient, index) => (
                       <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">{ingredient.name}</td>
                         <td className="px-6 py-4">
-                          <span className="font-medium text-gray-900">{ingredient.name}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium ${getClassificationColor(ingredient.classification)}`}>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(ingredient.classification)}`}>
                             {ingredient.classification.replace('_', ' ')}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <ul className="space-y-2">
-                            {ingredient.impacts.map((impact, impactIndex) => (
-                              <li key={impactIndex} className="flex items-start gap-2">
-                                <span className={`font-medium ${getSeverityColor(impact.severity)}`}>
-                                  {impact.metric}:
-                                </span>
-                                <span className="text-gray-600">{impact.effect}</span>
+                          <ul className="space-y-1">
+                            {ingredient.impacts.map((impact, idx) => (
+                              <li key={idx} className={`text-sm ${getSeverityColor(impact.severity)}`}>
+                                {impact.effect}
                               </li>
                             ))}
                           </ul>
                         </td>
                         <td className="px-6 py-4">
-                          {ingredient.warnings.length > 0 ? (
-                            <ul className="list-disc list-inside text-red-600 space-y-1">
-                              {ingredient.warnings.map((warning, warningIndex) => (
-                                <li key={warningIndex}>{warning}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <span className="text-green-600">No warnings</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {ingredient.recommendations.length > 0 ? (
-                            <ul className="list-disc list-inside text-blue-600 space-y-1">
-                              {ingredient.recommendations.map((rec, recIndex) => (
-                                <li key={recIndex}>{rec}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <span className="text-gray-500">No specific recommendations</span>
-                          )}
+                          <ul className="space-y-1">
+                            {ingredient.warnings.map((warning, idx) => (
+                              <li key={idx} className="text-sm text-red-600">
+                                {warning}
+                              </li>
+                            ))}
+                          </ul>
                         </td>
                       </tr>
                     ))}
