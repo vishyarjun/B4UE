@@ -16,7 +16,7 @@ interface Impact {
 
 interface AnalyzedIngredient {
   name: string;
-  classification: 'very_good' | 'good' | 'bad' | 'very_bad';
+  classification: 'very_good' | 'good' | 'neutral' | 'bad' | 'very_bad';
   impacts: Impact[];
   warnings: string[];
   recommendations: string[];
@@ -323,29 +323,44 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
 
   const getClassificationColor = (classification: AnalyzedIngredient['classification']) => {
     switch (classification) {
-      case 'very_good': return 'bg-green-50 text-green-700 border-green-200';
-      case 'good': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'bad': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'very_bad': return 'bg-red-50 text-red-700 border-red-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+      case 'very_good':
+        return 'bg-green-100 text-green-800';
+      case 'good':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'neutral':
+        return 'bg-gray-100 text-gray-800';
+      case 'bad':
+        return 'bg-orange-100 text-orange-800';
+      case 'very_bad':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getSeverityColor = (severity: Impact['severity']) => {
     switch (severity) {
-      case 'positive': return 'text-green-600';
-      case 'negative': return 'text-red-600';
-      case 'neutral': return 'text-gray-600';
-      default: return 'text-gray-600';
+      case 'positive':
+        return 'text-green-600';
+      case 'negative':
+        return 'text-red-600';
+      case 'neutral':
+        return 'text-gray-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
   const getConfidenceColor = (confidence: ScanResponse['confidence']) => {
     switch (confidence) {
-      case 'high': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'high':
+        return 'bg-green-100 text-green-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -383,8 +398,11 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
   };
 
   const getIngredientStats = (ingredients: AnalyzedIngredient[]) => {
-    return ingredients.reduce((acc: Record<AnalyzedIngredient['classification'], number>, ingredient: AnalyzedIngredient) => {
-      acc[ingredient.classification] = (acc[ingredient.classification] || 0) + 1;
+    return ingredients.reduce((acc, ingredient) => {
+      if (!acc[ingredient.classification]) {
+        acc[ingredient.classification] = 0;
+      }
+      acc[ingredient.classification]++;
       return acc;
     }, {} as Record<AnalyzedIngredient['classification'], number>);
   };
@@ -456,7 +474,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
                   }`}
                 >
                   <svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4H19v8a2 2 0 01-2 2H5a2 2 0 00-2-2V6a2 2 0 00-1.663-.89l-.812 1.22A2 2 0 0010.07 9H7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4H19v8a2 2 0 01-2 2H5a2 2 0 00-2-2V6a2 2 0 00-1.663-.89l-.812 1.22A2 2 0 010.07 9H7" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </button>
