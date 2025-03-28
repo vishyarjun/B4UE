@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { HealthData } from '../types/health';
+import { HealthData, HealthMetric } from '../types/health';
 
 interface Ingredient {
   name: string;
@@ -196,20 +196,35 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
     }
   };
 
-  const handleConfirmIngredients = async () => {
+  const analyzeIngredients = async () => {
     if (!scanResult) return;
     
     setIsAnalyzingHealth(true);
     setError(null);
 
     try {
+      // Format health data for API
+      const formattedHealthData = {
+        dietary_requirement: healthData.dietaryRequirement,
+        allergies: healthData.allergies,
+        health_conditions: healthData.healthConditions,
+        health_metrics: Object.entries(healthData.additionalHealthData).reduce((acc, [key, value]) => {
+          acc[key] = {
+            reference_interval: value.referenceInterval,
+            result: value.result,
+            units: value.units
+          };
+          return acc;
+        }, {} as Record<string, { reference_interval: string | null; result: number | null; units: string | null }>)
+      };
+
       const response = await fetch('/api/proxy/analyze-ingredients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          health_data: healthData,
+          health_data: formattedHealthData,
           ingredients: scanResult.ingredients
         })
       });
@@ -222,7 +237,6 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
       }
 
       const data = await response.json();
-      
       handleAnalysisResponse(data);
     } catch (error) {
       console.error('Error analyzing ingredients:', error);
@@ -602,7 +616,7 @@ export default function FoodScan({ onClose, healthData }: FoodScanProps) {
                     Take Another Photo
                   </button>
                   <button
-                    onClick={handleConfirmIngredients}
+                    onClick={analyzeIngredients}
                     className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
                   >
                     Confirm Ingredients
